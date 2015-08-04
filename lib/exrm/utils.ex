@@ -283,7 +283,7 @@ defmodule ReleaseManager.Utils do
   @doc "Get the path to a file located in priv/rel of the exrm dependency"
   def rel_source_path(file), do: Path.join(rel_source_path, file)
   @doc "Get the priv/rel/files path of the exrm dependency"
-  def rel_file_source_path,       do: Path.join([priv_path, "rel", "files"])
+  def rel_file_source_path,       do: Path.join([Mix.Project.deps_path, "relx" , "priv", "templates"])
   @doc "Get the path to a file located in priv/rel/files of the exrm dependency"
   def rel_file_source_path(file), do: Path.join(rel_file_source_path, file)
   @doc """
