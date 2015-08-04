@@ -29,18 +29,23 @@ defmodule Mix.Tasks.Release do
   alias  ReleaseManager.Utils
   alias  ReleaseManager.Config
 
+
   @_RELXCONF    "relx.config"
   @_BOOT_FILE   "boot"
   @_NODETOOL    "nodetool"
   @_SYSCONFIG   "sys.config"
   @_VMARGS      "vm.args"
-  @_RELEASE_DEF "release_definition.txt"
   @_RELEASES    "{{{RELEASES}}}"
   @_NAME        "{{{PROJECT_NAME}}}"
   @_VERSION     "{{{PROJECT_VERSION}}}"
   @_ERTS_VSN    "{{{ERTS_VERSION}}}"
   @_ERL_OPTS    "{{{ERL_OPTS}}}"
   @_LIB_DIRS    "{{{LIB_DIRS}}}"
+
+
+  require EEx
+  EEx.function_from_file :def, :relx_config_template, "priv/rel/#{@_RELXCONF}", [:project_name, :project_version, :lib_dirs, :releases]
+  EEx.function_from_file :def, :release_definition_template, "priv/rel/files/release_definition.txt", [:project_name, :project_version]
 
   def run(args) do
     if Mix.Project.umbrella? do
@@ -94,16 +99,12 @@ defmodule Mix.Tasks.Release do
   defp generate_relx_config(%Config{name: name, version: version, env: env} = config) do
     debug "Generating relx configuration..."
     # Get paths
-    rel_def  = rel_file_source_path @_RELEASE_DEF
     source   = rel_source_path @_RELXCONF
     dest     = rel_file_dest_path @_RELXCONF
-    # Get relx.config template contents
-    relx_config = source |> File.read!
-    # Get release definition template contents
-    tmpl = rel_def |> File.read!
+
     # Generate release configuration for historical releases
     releases = get_releases(name)
-      |> Enum.map(fn {rname, rver} -> tmpl |> replace_release_info(rname, rver) end)
+      |> Enum.map(fn {rname, rver} -> release_definition_template(rname, rver) end)
       |> Enum.join
     # Set upgrade flag if this is an upgrade release
     config = case releases do
@@ -118,14 +119,13 @@ defmodule Mix.Tasks.Release do
       _ ->
         [ '#{"_build/#{env}" |> Path.expand}' | elixir_paths ]
     end
-    # Build release configuration
-    relx_config = relx_config
-      |> String.replace(@_RELEASES, releases)
-      |> String.replace(@_LIB_DIRS, :io_lib.fwrite('~p.\n\n', [{:lib_dirs, lib_dirs}]) |> List.to_string)
-    # Replace placeholders for current release
-    relx_config = relx_config |> replace_release_info(name, version)
-    # Read config as Erlang terms
-    relx_config = Utils.string_to_terms(relx_config)
+
+
+    lib_dirs = :io_lib.fwrite('~p.\n\n', [{:lib_dirs, lib_dirs}]) |> List.to_string
+    relx_config = relx_config_template(name, version, lib_dirs, releases)
+      |> Utils.string_to_terms
+
+
     # Merge user provided relx.config
     user_config_path = rel_dest_path @_RELXCONF
     merged = case user_config_path |> File.exists? do
@@ -418,12 +418,6 @@ defmodule Mix.Tasks.Release do
           Map.put(config, key, value)
       end
     end
-  end
-
-  defp replace_release_info(template, name, version) do
-    template
-    |> String.replace(@_NAME, name)
-    |> String.replace(@_VERSION, version)
   end
 
   defp extract_erts_version(%Config{relx_config: relx_config}) do

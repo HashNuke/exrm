@@ -1,5 +1,5 @@
-{release, { {{{PROJECT_NAME}}}, "{{{PROJECT_VERSION}}}" }, [
-  { {{{PROJECT_NAME}}}, "{{{PROJECT_VERSION}}}" },
+{release, { <%= project_name %>, "<%= project_version %>" }, [
+  { <%= project_name %>, "<%= project_version %>" },
   elixir,
   iex,  % needed for iex remote console
   sasl % required for upgrades
